@@ -1,14 +1,14 @@
 mod cli;
+mod doctor;
 
+use crate::cli::entrypoint::{CliEntrypoint, CliEntrypointSubcommands};
 use clap::Parser;
-use cli::Cli;
 
 pub fn main() {
-    let args = Cli::parse();
+    let args = CliEntrypoint::parse();
 
-    println!("Name: {}", args.name);
-
-    if args.verbose {
-        println!("Verbose mode enabled.");
+    match args.command {
+        CliEntrypointSubcommands::Doctor(cmd) => cmd.run(),
+        CliEntrypointSubcommands::Version(cmd) => cmd.run(),
     }
 }

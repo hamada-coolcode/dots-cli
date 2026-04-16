@@ -6,64 +6,48 @@ This document provides guidance for agents working in this repository.
 
 `dots` is a Rust CLI application that helps manage dotfiles, their dependencies, and allows downloading and switching between dotfiles.
 
+### Module Structure
+
+```
+src/
+├── main.rs              # Entry point - parses CLI args and delegates to command .run()
+├── cli/
+│   ├── mod.rs        # Module declarations
+│   ├── entrypoint.rs # CLI struct definitions (CliEntrypoint, CliEntrypointSubcommands)
+│   ├── doctor.rs    # DoctorCommand struct with .run() method
+│   └── version.rs  # VersionCommand struct with .run() method
+└── doctor/
+    ├── mod.rs      # Module declarations
+    └── checks.rs  # Health checks (run_checks, HealthResult)
+```
+
 ## Build/Lint/Test Commands
 
 ### Building the Project
 
 ```bash
-# Build the project
-cargo build
-
-# Build in release mode
-cargo build --release
-
-# Run the application
-cargo run -- [args]
+cargo build                  # Build the project
+cargo build --release      # Build in release mode
+cargo run -- [args]      # Run the application
 ```
 
 ### Running Tests
 
 ```bash
-# Run all tests
-cargo test
-
-# Run a single test by name
-cargo test <test_name>
-
-# Run tests with output displayed
-cargo test -- --nocapture <test_name>
-
-# Run tests and show stdout
-cargo test -- --show-output
+cargo test                    # Run all tests
+cargo test <test_name>         # Run a single test by name
+cargo test -- --nocapture    # Run tests with output displayed
+cargo test -- --show-output  # Run tests and show stdout
 ```
 
 ### Code Quality
 
 ```bash
-# Format code
-cargo fmt
-
-# Check formatting (without modifying)
-cargo fmt -- --check
-
-# Run clippy for linting
-cargo clippy
-
-# Run clippy with all warnings
-cargo clippy -- -D warnings
-```
-
-### Other Commands
-
-```bash
-# Check code without building
-cargo check
-
-# Build documentation
-cargo doc
-
-# Clean build artifacts
-cargo clean
+cargo fmt                  # Format code (run before committing)
+cargo fmt -- --check       # Check formatting without modifying
+cargo clippy               # Run clippy for linting
+cargo clippy -- -D warnings # Treat all warnings as errors
+cargo check              # Check code without building
 ```
 
 ## Code Style Guidelines
@@ -79,30 +63,54 @@ cargo clean
 
 | Item | Convention | Example |
 |------|------------|---------|
-| Functions | snake_case | `get_config`, `process_file` |
+| Functions | snake_case | `get_config`, `run_checks` |
 | Variables | snake_case | `user_name`, `file_path` |
-| Structs | PascalCase | `ConfigManager`, `FileHandler` |
-| Enums | PascalCase | `FileStatus`, `ErrorType` |
-| Enum variants | PascalCase | `Ok`, `Err`, `NotFound` |
+| Structs | PascalCase | `CliEntrypoint`, `DoctorCommand` |
+| Enums | PascalCase | `CliEntrypointSubcommands` |
+| Enum variants | PascalCase | `Doctor`, `Version` |
 | Constants | SCREAMING_SNAKE_CASE | `MAX_RETRY_COUNT` |
-| Modules | snake_case | `config`, `file_handler` |
+| Modules | snake_case | `cli`, `doctor` |
+| Command structs | <CommandName>Command | `DoctorCommand`, `VersionCommand` |
 
 ### Imports
 
+Order imports by: 1) Standard library, 2) External crates, 3) Local modules (use `crate::`)
+
 ```rust
-// Order imports by:
-// 1. Standard library
-// 2. External crates
-// 3. Local modules (use `crate::` for internal)
 use std::path::PathBuf;
 use clap::Parser;
-use crate::cli::Cli;
+use crate::cli::entrypoint::CliEntrypoint;
+```
+
+### Command Pattern (Important!)
+
+All CLI commands should follow this pattern:
+
+```rust
+// In src/cli/<command>.rs
+use clap::Args;
+
+#[derive(Args, Debug)]
+pub struct <CommandName>Command {
+    // fields with clap attributes
+}
+
+impl <CommandName>Command {
+    pub fn run(&self) {
+        // command logic here
+    }
+}
+
+// In main.rs
+match args.command {
+    CliEntrypointSubcommands::<CommandName>(cmd) => cmd.run(),
+}
 ```
 
 ### Error Handling
 
 - Use `Result<T, E>` for functions that can fail
-- Use `anyhow::Result<T>` for application code ( propagating errors)
+- Use `anyhow::Result<T>` for application code (propagating errors)
 - Use `thiserror` for library code (defining error types)
 - Use `Option<T>` when a value may be absent
 - Prefer `unwrap_or`, `unwrap_or_else`, or `?` over `unwrap()` in production code
@@ -112,34 +120,26 @@ use crate::cli::Cli;
 
 - Document public API with `///` doc comments
 - Include examples in doc comments when useful
-- Add `#[allow(missing_docs)]` only when intentionally omitting docs
 
 ```rust
-/// Retrieves the configuration from the given path.
-///
-/// # Arguments
-/// * `path` - The path to the configuration file
+/// Runs system diagnostics and checks for required tools.
 ///
 /// # Example
 /// ```
-/// let config = get_config("/path/to/config.toml")?;
+/// let cmd = DoctorCommand { json: false, commands: None };
+/// cmd.run();
 /// ```
-pub fn get_config(path: &str) -> Result<Config, Error> {
+pub fn run(&self) {
     // ...
 }
 ```
 
 ### Modules and Structure
 
-- One module per file is preferred; group related code in a `mod.rs`
+- One module per file is preferred
 - Keep modules focused (single responsibility)
 - Use `pub(crate)` for items intended for internal use but public within crate
-
-### Performance Considerations
-
-- Clone only when necessary; prefer references
-- Use `&str` over `String` for function parameters when possible
-- Use `Cargo.lock` to pin dependency versions (do not edit directly)
+- Each command gets its own file in `src/cli/`
 
 ### Testing
 
@@ -153,32 +153,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_config_with_valid_file() {
+    fn test_health_check_detects_git() {
         // test implementation
     }
-}
-```
-
-### Common Patterns
-
-```rust
-// Option handling
-let value = optional_value.unwrap_or(default_value);
-
-// Result handling with ?
-fn process() -> Result<Output, Error> {
-    let config = read_config()?;  // propagates Error
-    Ok(transform(config))
-}
-
-// Early returns
-fn find_item(items: &[Item], id: u32) -> Option<Item> {
-    for item in items {
-        if item.id == id {
-            return Some(item.clone());
-        }
-    }
-    None
 }
 ```
 
