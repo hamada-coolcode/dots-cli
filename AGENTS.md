@@ -12,13 +12,13 @@ This document provides guidance for agents working in this repository.
 src/
 ├── main.rs              # Entry point - parses CLI args and delegates to command .run()
 ├── cli/
-│   ├── mod.rs        # Module declarations
-│   ├── entrypoint.rs # CLI struct definitions (CliEntrypoint, CliEntrypointSubcommands)
-│   ├── doctor.rs    # DoctorCommand struct with .run() method
-│   └── version.rs  # VersionCommand struct with .run() method
+│   ├── mod.rs           # Module declarations
+│   ├── entrypoint.rs    # CLI structs (CliEntrypoint, CliEntrypointSubcommands)
+│   ├── doctor.rs        # DoctorCommand with .run() method
+│   └── version.rs       # VersionCommand with .run() method
 └── doctor/
-    ├── mod.rs      # Module declarations
-    └── checks.rs  # Health checks (run_checks, HealthResult)
+    ├── mod.rs           # Module declarations
+    └── checks.rs        # Health checks (run_checks, HealthResult)
 ```
 
 ## Build/Lint/Test Commands
@@ -27,15 +27,15 @@ src/
 
 ```bash
 cargo build                  # Build the project
-cargo build --release      # Build in release mode
-cargo run -- [args]      # Run the application
+cargo build --release        # Build in release mode
+cargo run -- [args]          # Run the application
 ```
 
 ### Running Tests
 
 ```bash
-cargo test                    # Run all tests
-cargo test <test_name>         # Run a single test by name
+cargo test                   # Run all tests
+cargo test <test_name>       # Run a single test by name
 cargo test -- --nocapture    # Run tests with output displayed
 cargo test -- --show-output  # Run tests and show stdout
 ```
@@ -43,11 +43,11 @@ cargo test -- --show-output  # Run tests and show stdout
 ### Code Quality
 
 ```bash
-cargo fmt                  # Format code (run before committing)
-cargo fmt -- --check       # Check formatting without modifying
-cargo clippy               # Run clippy for linting
+cargo fmt                   # Format code (run before committing)
+cargo fmt -- --check        # Check formatting without modifying
+cargo clippy                # Run clippy for linting
 cargo clippy -- -D warnings # Treat all warnings as errors
-cargo check              # Check code without building
+cargo check                 # Check code without building
 ```
 
 ## Code Style Guidelines
@@ -56,7 +56,6 @@ cargo check              # Check code without building
 
 - Use 4 spaces for indentation
 - Follow `rustfmt` defaults (run `cargo fmt` before committing)
-- Maximum line length: 100 characters (default)
 - Use `?` operator for error propagation instead of `match` where appropriate
 
 ### Naming Conventions
@@ -68,7 +67,6 @@ cargo check              # Check code without building
 | Structs | PascalCase | `CliEntrypoint`, `DoctorCommand` |
 | Enums | PascalCase | `CliEntrypointSubcommands` |
 | Enum variants | PascalCase | `Doctor`, `Version` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_RETRY_COUNT` |
 | Modules | snake_case | `cli`, `doctor` |
 | Command structs | <CommandName>Command | `DoctorCommand`, `VersionCommand` |
 
@@ -84,7 +82,7 @@ use crate::cli::entrypoint::CliEntrypoint;
 
 ### Command Pattern (Important!)
 
-All CLI commands should follow this pattern:
+All CLI commands follow this pattern:
 
 ```rust
 // In src/cli/<command>.rs
@@ -110,11 +108,11 @@ match args.command {
 ### Error Handling
 
 - Use `Result<T, E>` for functions that can fail
-- Use `anyhow::Result<T>` for application code (propagating errors)
+- Use `anyhow::Result<T>` for application code
 - Use `thiserror` for library code (defining error types)
 - Use `Option<T>` when a value may be absent
-- Prefer `unwrap_or`, `unwrap_or_else`, or `?` over `unwrap()` in production code
-- Never use `unwrap()` or `expect()` in library code or production paths
+- Prefer `unwrap_or`, `unwrap_or_else`, or `?` over `unwrap()` in production
+- Never use `unwrap()` or `expect()` in production paths
 
 ### Documentation
 
@@ -126,26 +124,24 @@ match args.command {
 ///
 /// # Example
 /// ```
-/// let cmd = DoctorCommand { json: false, commands: None };
+/// let cmd = DoctorCommand { json: false };
 /// cmd.run();
 /// ```
-pub fn run(&self) {
-    // ...
-}
+pub fn run(&self) { ... }
 ```
 
 ### Modules and Structure
 
 - One module per file is preferred
 - Keep modules focused (single responsibility)
-- Use `pub(crate)` for items intended for internal use but public within crate
+- Use `pub(crate)` for internal but crate-public items
 - Each command gets its own file in `src/cli/`
 
 ### Testing
 
 - Write unit tests in the same file, below the implementation
 - Use `#[cfg(test)]` module for integration tests
-- Name test functions descriptively: `test_<what_is_being_tested>_<expected_behavior>`
+- Name test functions: `test_<what_is_being_tested>_<expected_behavior>`
 
 ```rust
 #[cfg(test)]
@@ -162,6 +158,8 @@ mod tests {
 ## Dependencies
 
 - **clap**: CLI argument parsing with derive macros
+- **owo-colors**: Colored terminal output
+- **ratatui**: TUI widgets (optional, for rich UIs)
 - Add dependencies to `Cargo.toml` under `[dependencies]`
 - Pin exact versions for reproducible builds
 
